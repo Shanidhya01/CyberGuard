@@ -1,83 +1,76 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Search,
   Mail,
-  Phone,
-  CreditCard,
+  Database,
   Shield,
   AlertTriangle,
   CheckCircle,
   ChevronRight,
-  ChevronDown,
 } from "lucide-react";
 import { Button } from "../ui/Button";
 
 const SearchSection: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [creditCard, setCreditCard] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState<"email" | "keyword">("email");
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isBreached, setIsBreached] = useState(false);
   const [breachDetails, setBreachDetails] = useState<any>(null);
   const [showNotificationForm, setShowNotificationForm] = useState(false);
-  const [notificationEmail, setNotificationEmail] = useState("");
-  const [searchType, setSearchType] = useState<"email" | "phone" | "creditCard">("email");
-  const [showSearchTypeDropdown, setShowSearchTypeDropdown] = useState(false);
-
-  const searchTypeOptions = [
-    { value: "email", label: "Email Address", icon: <Mail className="w-4 h-4" /> },
-    { value: "phone", label: "Phone Number", icon: <Phone className="w-4 h-4" /> },
-    { value: "creditCard", label: "Credit Card", icon: <CreditCard className="w-4 h-4" /> },
-  ];
+  const [email, setEmail] = useState("");
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (
-      (searchType === "email" && !email) ||
-      (searchType === "phone" && !phone) ||
-      (searchType === "creditCard" && !creditCard)
-    ) {
-      alert(`Please enter a ${searchType === "email" ? "email address" : searchType === "phone" ? "phone number" : "credit card number"}`);
-      return;
-    }
+    if (!searchTerm) return;
+
+    console.log("User searched for:", searchTerm, "Type:", searchType);
 
     setIsSearching(true);
     setHasSearched(false);
 
     try {
-      const params = new URLSearchParams();
-      if (email) params.append("email", email);
-      if (phone) params.append("phone", phone);
-      if (creditCard) params.append("creditCard", creditCard);
+      // Adjust API URL and query params as needed based on searchType
+      const queryParam = searchType === "email" ? `email=${searchTerm}` : `keyword=${searchTerm}`;
+      const response = await fetch(`http://localhost:5000/api/search?${queryParam}`);
 
-      const response = await fetch(`http://localhost:5000/api/search?${params.toString()}`);
-      
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        console.error("API response error:", response.status, response.statusText);
+        setIsBreached(false);
+        setBreachDetails(null);
+        setIsSearching(false);
+        setHasSearched(true);
+        return;
       }
 
       const data = await response.json();
-      console.log("API response:", data);
+
+      console.log("API response data:", data);
+
+      /*
+      Expected data format from backend:
+      {
+        breached: boolean,
+        data: {
+          emails: {...},
+          phone_numbers: {...},
+          credit_cards: {...}
+        },
+        mongoHit: boolean  // OPTIONAL: backend can send this to indicate if DB query was hit
+      }
+      */
+
+      // Log if query hit the DB (if backend sends this info)
+      if ("mongoHit" in data) {
+        console.log("MongoDB query hit status:", data.mongoHit);
+      }
 
       setIsBreached(data.breached);
-      
-      if (data.breached) {
-        setBreachDetails({
-          emails: data.matches.email ? data.results.flatMap((r: any) => r.emails) : [],
-          phone_numbers: data.matches.phone ? data.results.flatMap((r: any) => r.phone_numbers) : [],
-          credit_cards: data.matches.creditCard ? data.results.flatMap((r: any) => r.credit_cards) : [],
-          sources: [...new Set(data.results.map((r: any) => r.source))],
-          severities: [...new Set(data.results.map((r: any) => r.severity))],
-          firstDetected: data.results[0]?.date
-        });
-      } else {
-        setBreachDetails(null);
-      }
+      setBreachDetails(data.data || {});
     } catch (err) {
-      console.error("Search error:", err);
+      console.error("Fetch error:", err);
       setIsBreached(false);
       setBreachDetails(null);
     } finally {
@@ -88,14 +81,14 @@ const SearchSection: React.FC = () => {
 
   const handleNotificationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Notification set up for: ${notificationEmail}`);
+    alert(`Notification set up for: ${email}`);
     setShowNotificationForm(false);
   };
 
   const viewDetailedReport = () => {
     navigate("/report", {
       state: {
-        searchTerms: { email, phone, creditCard },
+        searchTerm,
         isBreached,
         breachDetails,
         searchDate: new Date().toISOString(),
@@ -103,98 +96,22 @@ const SearchSection: React.FC = () => {
     });
   };
 
-  const renderBreachData = (title: string, data: string[]) => {
-    if (!data || data.length === 0) return null;
+  // Helper to render breach details from emails, phone_numbers, credit_cards
+  const renderBreachSection = (title: string, dataSection: any) => {
+    if (!dataSection || Object.keys(dataSection).length === 0) return null;
 
     return (
-      <div className="mb-4">
-        <h4 className="font-semibold text-white mb-2">{title}</h4>
-        <div className="bg-gray-800/50 rounded-lg p-4 max-h-40 overflow-y-auto">
-          <ul className="space-y-1">
-            {data.map((item, index) => (
-              <li key={index} className="text-gray-300 text-sm">
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="mb-6">
+        <h4 className="font-semibold text-white text-lg mb-3">{title}</h4>
+        <ul className="list-disc list-inside text-gray-300 space-y-1">
+          {Object.entries(dataSection).map(([key, value]) => (
+            <li key={key}>
+              <strong>{key}:</strong> {String(value)}
+            </li>
+          ))}
+        </ul>
       </div>
     );
-  };
-
-  const renderBreachMetadata = () => {
-    if (!breachDetails) return null;
-
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div>
-          <h4 className="font-semibold text-white mb-2">Sources</h4>
-          <div className="bg-gray-800/50 rounded-lg p-4">
-            {breachDetails.sources.map((source: string, index: number) => (
-              <span 
-                key={index} 
-                className="inline-block bg-gray-700 rounded-full px-3 py-1 text-sm font-semibold text-gray-300 mr-2 mb-2"
-              >
-                {source}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div>
-          <h4 className="font-semibold text-white mb-2">Severity Levels</h4>
-          <div className="bg-gray-800/50 rounded-lg p-4">
-            {breachDetails.severities.map((severity: string, index: number) => (
-              <span 
-                key={index}
-                className={`inline-block rounded-full px-3 py-1 text-sm font-semibold mr-2 mb-2 ${
-                  severity === 'critical' ? 'bg-red-900 text-red-100' :
-                  severity === 'high' ? 'bg-orange-900 text-orange-100' :
-                  severity === 'medium' ? 'bg-yellow-900 text-yellow-100' :
-                  'bg-gray-700 text-gray-300'
-                }`}
-              >
-                {severity}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const getCurrentSearchIcon = () => {
-    switch(searchType) {
-      case "email": return <Mail className="w-5 h-5 text-cyan-400" />;
-      case "phone": return <Phone className="w-5 h-5 text-cyan-400" />;
-      case "creditCard": return <CreditCard className="w-5 h-5 text-cyan-400" />;
-      default: return <Mail className="w-5 h-5 text-cyan-400" />;
-    }
-  };
-
-  const getCurrentPlaceholder = () => {
-    switch(searchType) {
-      case "email": return "Enter your email address";
-      case "phone": return "Enter your phone number (with country code)";
-      case "creditCard": return "Enter credit card number";
-      default: return "Enter your email address";
-    }
-  };
-
-  const getCurrentValue = () => {
-    switch(searchType) {
-      case "email": return email;
-      case "phone": return phone;
-      case "creditCard": return creditCard;
-      default: return email;
-    }
-  };
-
-  const handleInputChange = (value: string) => {
-    switch(searchType) {
-      case "email": setEmail(value); break;
-      case "phone": setPhone(value); break;
-      case "creditCard": setCreditCard(value); break;
-    }
   };
 
   return (
@@ -213,84 +130,77 @@ const SearchSection: React.FC = () => {
               </span>
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Check if your information has been exposed in data breaches
+              Enter your email address or keywords to scan our database of
+              billions of leaked records.
             </p>
           </div>
 
           <div className="bg-gray-800/60 backdrop-blur-sm border border-gray-700 rounded-xl p-6 md:p-8 shadow-lg relative mb-8">
-            <form onSubmit={handleSearch} className="mt-4">
-              <div className="space-y-4">
-                {/* Search Type Dropdown */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between px-4 py-3 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    onClick={() => setShowSearchTypeDropdown(!showSearchTypeDropdown)}
-                  >
-                    <div className="flex items-center">
-                      {getCurrentSearchIcon()}
-                      <span className="ml-3">
-                        {searchTypeOptions.find(opt => opt.value === searchType)?.label}
-                      </span>
-                    </div>
-                    <ChevronDown className={`w-5 h-5 transition-transform ${showSearchTypeDropdown ? 'transform rotate-180' : ''}`} />
-                  </button>
-                  
-                  {showSearchTypeDropdown && (
-                    <div className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-lg">
-                      {searchTypeOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          className={`w-full flex items-center px-4 py-3 text-left hover:bg-gray-600 ${searchType === option.value ? 'bg-gray-600' : ''}`}
-                          onClick={() => {
-                            setSearchType(option.value as "email" | "phone" | "creditCard");
-                            setShowSearchTypeDropdown(false);
-                          }}
-                        >
-                          <span className="mr-3">{option.icon}</span>
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            <div className="absolute top-0 right-0 m-4">
+              <div className="flex space-x-2">
+                <button
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                    searchType === "email"
+                      ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  onClick={() => setSearchType("email")}
+                >
+                  <Mail className="w-4 h-4 inline mr-1" />
+                  Email
+                </button>
+                <button
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                    searchType === "keyword"
+                      ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  onClick={() => setSearchType("keyword")}
+                >
+                  <Database className="w-4 h-4 inline mr-1" />
+                  Keyword
+                </button>
+              </div>
+            </div>
 
-                {/* Dynamic Input Field */}
-                <div className="relative">
+            <form onSubmit={handleSearch} className="mt-8">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    {getCurrentSearchIcon()}
+                    <Search className="h-5 w-5 text-cyan-400" />
                   </div>
                   <input
-                    type={searchType === "creditCard" ? "text" : searchType === "email" ? "email" : "tel"}
-                    placeholder={getCurrentPlaceholder()}
-                    value={getCurrentValue()}
-                    onChange={(e) => handleInputChange(e.target.value)}
+                    type={searchType === "email" ? "email" : "text"}
+                    placeholder={
+                      searchType === "email"
+                        ? "Enter your email address"
+                        : "Enter username, phone, or keyword"
+                    }
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="block w-full pl-10 pr-3 py-3 border border-gray-600 rounded-lg bg-gray-700/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    required
                   />
                 </div>
-
-                <div className="pt-2">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    className="w-full flex items-center justify-center bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 border border-green-400/30 text-white rounded-md px-4 py-3"
-                    isLoading={isSearching}
-                    rightIcon={<ChevronRight className="w-5 h-5" />}
-                  >
-                    Check Now
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="flex items-center justify-center bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 border border-green-400/30 text-white rounded-md px-4 py-2"
+                  isLoading={isSearching}
+                  rightIcon={<ChevronRight className="w-5 h-5" />}
+                >
+                  Check Now
+                </Button>
               </div>
               <p className="mt-3 text-sm text-gray-400">
                 <Shield className="w-4 h-4 inline mr-1" />
-                We value your privacy. Your search data is encrypted and never stored.
+                We value your privacy. Your search data is encrypted and never
+                stored.
               </p>
             </form>
           </div>
 
-          {/* Rest of the component remains the same */}
           {hasSearched && !isSearching && (
             <div
               className={`${
@@ -299,7 +209,117 @@ const SearchSection: React.FC = () => {
                   : "bg-green-900/20 border-green-800"
               } border rounded-xl p-6 md:p-8 animate-fade-in transition-all duration-500`}
             >
-              {/* ... existing results display code ... */}
+              <div className="flex items-start gap-4">
+                <div
+                  className={`p-3 rounded-full ${
+                    isBreached
+                      ? "bg-red-900/40 text-red-400"
+                      : "bg-green-900/40 text-green-400"
+                  }`}
+                >
+                  {isBreached ? (
+                    <AlertTriangle className="w-6 h-6" />
+                  ) : (
+                    <CheckCircle className="w-6 h-6" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold mb-2">
+                    {isBreached
+                      ? "Your information has been compromised"
+                      : "Good news! No breaches found"}
+                  </h3>
+
+                  {isBreached ? (
+                    <div>
+                      <p className="text-gray-300 mb-4">
+                        We've found your information in leaked data sets.
+                      </p>
+
+                      {renderBreachSection("Emails", breachDetails.emails)}
+                      {renderBreachSection("Phone Numbers", breachDetails.phone_numbers)}
+                      {renderBreachSection("Credit Cards", breachDetails.credit_cards)}
+
+                      <div className="mb-6">
+                        <h4 className="font-semibold text-lg mb-3">
+                          Recommended Actions:
+                        </h4>
+                        <ul className="space-y-2 text-gray-300">
+                          <li className="flex items-start">
+                            <ChevronRight className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                            <span>
+                              Change passwords for affected accounts immediately
+                            </span>
+                          </li>
+                          <li className="flex items-start">
+                            <ChevronRight className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                            <span>
+                              Enable two-factor authentication where available
+                            </span>
+                          </li>
+                          <li className="flex items-start">
+                            <ChevronRight className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                            <span>
+                              Monitor your accounts for suspicious activity
+                            </span>
+                          </li>
+                          <li className="flex items-start">
+                            <ChevronRight className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                            <span>
+                              Be cautious of phishing attempts using your leaked
+                              information
+                            </span>
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div className="flex flex-wrap gap-4 mt-6">
+                        <Button variant="primary" onClick={viewDetailedReport}>
+                          View Detailed Report
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => setShowNotificationForm(true)}
+                        >
+                          Get Breach Notifications
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-gray-300 mb-4">
+                        We couldn't find your information in our database of
+                        known data breaches. Stay protected by setting up breach
+                        notifications.
+                      </p>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setShowNotificationForm(true)}
+                      >
+                        Get Breach Notifications
+                      </Button>
+                    </div>
+                  )}
+
+                  {showNotificationForm && (
+                    <form onSubmit={handleNotificationSubmit} className="mt-4">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                          type="email"
+                          placeholder="Enter your email address"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                          required
+                        />
+                        <Button type="submit" variant="primary">
+                          Subscribe
+                        </Button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
