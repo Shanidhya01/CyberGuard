@@ -1,0 +1,5 @@
+Flask
+flask-pymongo
+APScheduler
+requests
+beautifulsoup4
