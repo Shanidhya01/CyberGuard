@@ -30,6 +30,11 @@ pnpm-debug.log*
 Thumbs.db
 
 # VSCode
+
+*.env
+.env
+server/.env
+
 .vscode/
 .history/
 

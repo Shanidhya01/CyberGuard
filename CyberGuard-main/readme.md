@@ -1,4 +1,5 @@
 # CyberGuard
+
 CyberGuard is a full-stack application for data breach detection and digital identity protection. It allows users to check if their personal information (email, phone, credit card) has been compromised in known data breaches, receive breach notifications, and view detailed security reports.
 
 ---
@@ -19,54 +20,89 @@ CyberGuard is a full-stack application for data breach detection and digital ide
 
 ## Features
 
-- **Data Breach Detection:** Check if your email, phone, or credit card has been leaked.
-- **Breach Notifications:** Get alerts when your data appears in new breaches.
-- **Detailed Reports:** View comprehensive breach and risk analysis.
-- **User Authentication:** Secure login and signup with Firebase.
-- **Modern UI:** Responsive React frontend with Tailwind CSS.
-- **Admin Dashboard:** (Optional) For managing breach data.
+-**Data Breach Detection:** Check if your email, phone, or credit card has been leaked.
+
+-**Breach Notifications:** Get alerts when your data appears in new breaches.
+
+-**Detailed Reports:** View comprehensive breach and risk analysis.
+
+-**User Authentication:** Secure login and signup with Firebase.
+
+-**Modern UI:** Responsive React frontend with Tailwind CSS.
+
+-**Admin Dashboard:** (Optional) For managing breach data.
 
 ---
 
 ## Project Structure
 
 ```
+
 CyberGuard-main/
+
 │
+
 ├── backend/           # Python backend for scraping/scheduling (optional)
+
 │   ├── app.py
+
 │   ├── config.py
+
 │   ├── requirements.txt
+
 │   └── ...
+
 │
+
 ├── client/            # React frontend
+
 │   ├── src/
+
 │   ├── public/
+
 │   ├── package.json
+
 │   ├── tailwind.config.js
+
 │   └── ...
+
 │
+
 ├── server/            # Node.js/Express backend API
+
 │   ├── app.js
+
 │   ├── server.js
+
 │   ├── models/
+
 │   │   └── breachDataModel.js
+
 │   ├── routes/
+
 │   │   └── searchRoutes.js
+
 │   ├── package.json
+
 │   └── ...
+
 │
+
 └── README.md
+
 ```
 
 ---
 
 ## Tech Stack
 
-- **Frontend:** React, TypeScript, Tailwind CSS, Vite, Firebase Auth
-- **Backend:** Node.js, Express, MongoDB (Mongoose)
-- **Python Backend (optional):** For scraping/scheduling breach data
-- **Other:** Lucide React Icons, Styled JSX
+-**Frontend:** React, TypeScript, Tailwind CSS, Vite, Firebase Auth
+
+-**Backend:** Node.js, Express, MongoDB (Mongoose)
+
+-**Python Backend (optional):** For scraping/scheduling breach data
+
+-**Other:** Lucide React Icons, Styled JSX
 
 ---
 
@@ -82,35 +118,53 @@ CyberGuard-main/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/CyberGuard.git
-cd CyberGuard-main
+
+gitclonehttps://github.com/yourusername/CyberGuard.git
+
+cdCyberGuard-main
+
 ```
 
 ### 2. Setup the Server (API)
 
 ```bash
-cd server
-npm install
+
+cdserver
+
+npminstall
+
 # Create a .env file with your MongoDB URI and other secrets
-npm run dev
+
+npmrundev
+
 ```
 
 ### 3. Setup the Client (Frontend)
 
 ```bash
-cd ../client
-npm install
+
+cd../client
+
+npminstall
+
 # Copy .env.sample to .env and set your API endpoint if needed
-npm run dev
+
+npmrundev
+
 ```
 
 ### 4. (Optional) Setup the Python Backend
 
 ```bash
-cd ../backend
-pip install -r requirements.txt
+
+cd../backend
+
+pipinstall-rrequirements.txt
+
 # Run scrapers or scheduler as needed
-python app.py
+
+pythonapp.py
+
 ```
 
 ---
@@ -120,15 +174,21 @@ python app.py
 ### Server (`server/.env`)
 
 ```
+
 MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/cyberguard
+
 PORT=5000
+
 ```
 
 ### Client (`client/.env`)
 
 ```
+
 VITE_API_URL=http://localhost:5000
+
 # Firebase config variables as needed
+
 ```
 
 ---
@@ -137,13 +197,15 @@ VITE_API_URL=http://localhost:5000
 
 ### Server
 
-- `npm run dev` — Start Express server with nodemon
+-`npm run dev` — Start Express server with nodemon
 
 ### Client
 
-- `npm run dev` — Start React development server
-- `npm run build` — Build for production
-- `npm run lint` — Lint code
+-`npm run dev` — Start React development server
+
+-`npm run build` — Build for production
+
+-`npm run lint` — Lint code
 
 ---
 
@@ -151,26 +213,39 @@ VITE_API_URL=http://localhost:5000
 
 ### Search Breaches
 
-- `GET /api/search?email=example@email.com`
-- `GET /api/search?phone=1234567890`
-- `GET /api/search?q=keyword`
+-`GET /api/search?email=example@email.com`
+
+-`GET /api/search?phone=1234567890`
+
+-`GET /api/search?q=keyword`
 
 **Response:**
+
 ```json
+
 {
+
   "success": true,
+
   "count": 1,
+
   "breached": true,
+
   "searchTerm": "example@email.com",
+
   "searchType": "email",
+
   "data": [ ... ],
+
   "message": "Breaches found"
+
 }
+
 ```
 
 ### Health Check
 
-- `GET /api/health`
+-`GET /api/health`
 
 ---
 
@@ -186,4 +261,19 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 ---
 
+<<<<<<< HEAD
+
 **CyberGuard** — Protecting your digital identity from data breaches and cyber threats.
+
+=======
+
+**CyberGuard** — Protecting your digital identity from data breaches and cyber threats.
+
+>>>>>>> 15d430ec090a35bef606cf2b7da356f184b7ef90
+>>>>>>>
+>>>>>>
+>>>>>
+>>>>
+>>>
+>>
+>
