@@ -1,0 +1,70 @@
+# Node
+node_modules/
+.env
+.env.*
+dist/
+build/
+.cache/
+.nyc_output/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+ENV/
+.venv/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+.history/
+
+# Misc
+*.swp
+*.swo
+*.bak
+*.tmp
+*.seed
+*.pid
+*.pid.lock
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+*.sql
+*.pdb
+
+# Test
+junit.xml
+
+# Production
+/static/
+/public/
+
+# Others
+.idea/
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# Ignore local secrets
+secrets.*
+
+# Ignore test data
+seedBreachTest.js

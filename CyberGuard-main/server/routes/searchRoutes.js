@@ -2,98 +2,91 @@ const express = require('express');
 const router = express.Router();
 const BreachData = require('../models/breachDataModel');
 
-/**
- * @route GET /api/search
- * @description Check for breached data
- * @param {string} email - Email to search
- * @param {string} phone - Phone number to search
- * @param {string} creditCard - Credit card to search
- * @returns {Object} Returns breach status and details
- */
 router.get('/', async (req, res) => {
   try {
-    const { email, phone, creditCard } = req.query;
-    
-    // Validate at least one search parameter exists
-    if (!email && !phone && !creditCard) {
-      return res.status(400).json({ 
+    const { email, phone, q, keyword } = req.query;
+
+    // Support both 'q' and 'keyword' as generic search
+    let searchTerm = (q || keyword || email || phone || '').toString().trim();
+    const originalSearchTerm = searchTerm;
+    let searchType = '';
+    console.log('--- SEARCH DEBUG ---');
+    console.log('Search term:', searchTerm);
+
+    if (!searchTerm) {
+      return res.status(400).json({
         success: false,
-        message: 'At least one search parameter (email, phone, or credit card) is required'
+        message: 'Email, phone, or search term is required',
       });
     }
 
-    // Build query with exact matching
-    const query = {
-      $or: []
-    };
+    const isEmailSearch = /\S+@\S+\.\S+/.test(searchTerm);
+    const isPhoneSearch = /^\d{7,15}$/.test(searchTerm);
+    const isCreditCardSearch = /^\d{12,19}$/.test(searchTerm);
 
-    if (email) {
-      query.$or.push({ emails: email.toLowerCase().trim() });
-    }
-    if (phone) {
-      const cleanPhone = phone.replace(/[^\d+]/g, '');
-      query.$or.push({ phone_numbers: cleanPhone });
-    }
-    if (creditCard) {
-      const cleanCard = creditCard.replace(/\s+/g, '');
-      query.$or.push({ credit_cards: cleanCard });
-    }
+    // If searching by q or keyword, treat as generic: check all fields
+    const isGenericSearch = !!(q || keyword);
+    const allResults = await BreachData.find({}).lean();
+    console.log('All DB records count:', allResults.length);
+    let matchedRecords = [];
+    let breached = false;
 
-    // Execute search with optimized projection
-    const results = await BreachData.find(query)
-      .select('emails phone_numbers credit_cards source severity createdAt')
-      .lean();
-
-    // Check which parameters actually matched
-    const matchedEmail = email ? results.some(r => 
-      r.emails.includes(email.toLowerCase().trim())
-    ) : false;
-
-    const matchedPhone = phone ? results.some(r => 
-      r.phone_numbers.some(p => p === phone.replace(/[^\d+]/g, ''))
-    ) : false;
-
-    const matchedCard = creditCard ? results.some(r => 
-      r.credit_cards.includes(creditCard.replace(/\s+/g, ''))
-    ) : false;
-
-    const isBreached = matchedEmail || matchedPhone || matchedCard;
-
-    // Format response
-    const response = {
-      success: true,
-      breached: isBreached,
-      matches: {
-        email: matchedEmail,
-        phone: matchedPhone,
-        creditCard: matchedCard
-      },
-      results: isBreached ? results.map(r => ({
-        _id: r._id,
-        source: r.source,
-        severity: r.severity,
-        date: r.createdAt.toISOString().split('T')[0],
-        counts: {
-          emails: r.emails.length,
-          phones: r.phone_numbers.length,
-          cards: r.credit_cards.length
-        }
-      })) : null,
-      searchedFor: {
-        ...(email && { email }),
-        ...(phone && { phone }),
-        ...(creditCard && { creditCard })
+    allResults.forEach(record => {
+      let foundInEmail = false, foundInPhone = false, foundInCard = false;
+      if (isGenericSearch || isEmailSearch) {
+        foundInEmail = record.emails.some(e => e.toLowerCase() === searchTerm.toLowerCase());
       }
-    };
+      if (isGenericSearch || isPhoneSearch) {
+        foundInPhone = record.phone_numbers.some(p => p === searchTerm);
+      }
+      if (isGenericSearch || isCreditCardSearch) {
+        foundInCard = record.credit_cards.some(c => c === searchTerm);
+      }
+      if (foundInEmail || foundInPhone || foundInCard) {
+        breached = true;
+        matchedRecords.push({
+          _id: record._id,
+          name: `Breach #${record._id.toString().slice(-6)}`,
+          date: record.createdAt ? record.createdAt.toISOString().split('T')[0] : '',
+          affectedAccounts: record.emails.length + record.phone_numbers.length + record.credit_cards.length,
+          dataTypes: [
+            ...(record.emails.length ? ['Emails'] : []),
+            ...(record.phone_numbers.length ? ['Phone Numbers'] : []),
+            ...(record.credit_cards.length ? ['Credit Cards'] : [])
+          ],
+          isBreached: true,
+          foundIn: {
+            email: foundInEmail,
+            phone: foundInPhone,
+            creditCard: foundInCard
+          },
+          stats: {
+            totalEmails: record.emails.length,
+            totalPhones: record.phone_numbers.length,
+            totalCreditCards: record.credit_cards.length
+          }
+        });
+        console.log('Matched record:', record._id, { foundInEmail, foundInPhone, foundInCard });
+      }
+    });
+    console.log('Final breached:', breached);
 
-    res.json(response);
+    res.json({
+      success: true,
+      count: matchedRecords.length,
+      breached,
+      searchTerm: originalSearchTerm,
+      searchType,
+      data: matchedRecords.length ? matchedRecords : null,
+      message: breached ? 'Data breach detected' : 'No breaches found'
+    });
 
   } catch (error) {
     console.error('Search error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
-      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
